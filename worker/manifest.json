@@ -1,14 +1,10 @@
 {
-  "name": "Ares",
-  "short_name": "Ares",
-  "description": "Asistente de voz y chat",
-  "start_url": "./index.html",
-  "scope": "./",
-  "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#07080b",
-  "theme_color": "#07080b",
-  "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
-  ]
+  "name": "ares",
+  "main": "ares-proxy.js",
+  "compatibility_date": "2026-10-01",
+  "vars": {
+    "API_URL": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    "MODEL": "gemini-3.8-flash",
+    "ALLOWED_ORIGIN": "https://penajefersson96-svg.github.io"
+  }
 }
