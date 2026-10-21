@@ -1,0 +1,14 @@
+{
+  "name": "Ares",
+  "short_name": "Ares",
+  "description": "Asistente de voz y chat",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07080b",
+  "theme_color": "#07080b",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
