@@ -5,6 +5,7 @@
 "vars": {
 "API_URL": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
 "MODEL": "gemini-3.8-flash",
+"FALLBACK_MODEL": "gemini-3.7-flash",
 "ALLOWED_ORIGIN": "https://penajefersson96-svg.github.io"
 }
 }
