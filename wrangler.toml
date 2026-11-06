@@ -1,6 +1,5 @@
 # ARES - configuración de Cloudflare Workers
 
-# IMPORTANTE: cambia "ares" por el nombre EXACTO de tu Worker en Cloudflare (Paso 1)
 name = "ares-worker"
 
 main = "worker/index.js"
@@ -14,6 +13,11 @@ directory = "./"
 # Acceso a la IA gratuita de Cloudflare
 [ai]
 binding = "AI"
+
+# Memoria a largo plazo de Ares.
+# Sin "id": Cloudflare crea el espacio automáticamente al desplegar.
+[[kv_namespaces]]
+binding = "MEMORY"
 
 # Variables de texto (los secretos NO van aquí)
 [vars]
