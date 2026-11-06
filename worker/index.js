@@ -126,9 +126,19 @@ export default {
       return new Response(null, { status: 204, headers: cors });
     }
 
-    // Comprobación de que el Worker está vivo
-    if (request.method === 'GET' && url.pathname === '/') {
-      return json({ ok: true, name: 'ARES', version: '0.1' }, 200, cors);
+    // Comprobación de que el Worker está vivo y bien configurado
+    if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/api/health')) {
+      return json(
+        {
+          ok: true,
+          name: 'ARES',
+          version: '0.2',
+          ai: Boolean(env.AI),
+          key: Boolean(env.ARES_KEY),
+        },
+        200,
+        cors
+      );
     }
 
     if (request.method !== 'POST' || url.pathname !== '/chat') {
@@ -169,6 +179,8 @@ export default {
       ? [body.model]
       : AUTO_ORDER;
 
+    let lastError = '';
+
     for (const key of order) {
       try {
         const stream = await env.AI.run(MODELS[key], {
@@ -187,14 +199,17 @@ export default {
           },
         });
       } catch (err) {
+        lastError = String((err && err.message) || err).slice(0, 300);
         console.error('Fallo con el modelo', key, err);
       }
     }
 
+    // Solo llega aquí quien ya pasó la contraseña, por eso es seguro mostrar el detalle
     return json(
       {
         error:
-          'Los modelos no están disponibles. Puede que se haya agotado la cuota gratuita de hoy (se reinicia a las 00:00 UTC).',
+          'Los modelos no están disponibles. Puede que se haya agotado la cuota gratuita de hoy (se reinicia a las 00:00 UTC). Detalle técnico: ' +
+          lastError,
       },
       503,
       cors
