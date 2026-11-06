@@ -1,10 +1,12 @@
 /* ARES - app.js
-   Cerebro de la interfaz: une los botones, guarda el historial y envía mensajes. */
+   Cerebro de la interfaz: une los botones, guarda el historial,
+   pide la contraseña y conversa con el Worker. */
 
 import {
   els, initUI, addMessage, updateBubble, showTyping, resetChat,
   setStatus, setThinking, toast, autoResize, closeSettings,
 } from './ui.js';
+import { streamChat, getKey, setKey, clearKey } from './api.js';
 
 /* ============ ALMACENAMIENTO LOCAL ============ */
 
@@ -14,6 +16,7 @@ const KEYS = {
 };
 
 const MAX_HISTORY = 100;
+const MAX_SENT = 20; // mensajes que se envían al cerebro en cada petición
 
 const DEFAULT_SETTINGS = {
   persona: 'general',
@@ -62,35 +65,38 @@ function saveSettings() {
   saveJSON(KEYS.settings, settings);
 }
 
-/* ============ CEREBRO (TEMPORAL) ============
-   Este bloque es un simulacro. En la siguiente parte lo reemplazamos
-   por la conexión real con Cloudflare (js/api.js). */
+/* ============ PANTALLA DE BLOQUEO ============ */
 
-async function getReply(messages, options) {
-  const last = messages[messages.length - 1].content;
-  await new Promise((r) => setTimeout(r, 700));
+const lock = {
+  screen: document.getElementById('lock-screen'),
+  input: document.getElementById('lock-input'),
+  btn: document.getElementById('lock-btn'),
+  error: document.getElementById('lock-error'),
+};
 
-  if (last.trim() === '/demo') {
-    return [
-      '## Prueba de formato',
-      'Esto es **negrita**, esto es *cursiva* y esto es `código en línea`.',
-      '',
-      '- Primer punto de lista',
-      '- Segundo punto de lista',
-      '',
-      '```js',
-      'console.log("Hola, soy ARES");',
-      '```',
-      '',
-      'Un enlace: [Cloudflare](https://www.cloudflare.com)',
-    ].join('\n');
+function showLock(message = '') {
+  lock.screen.hidden = false;
+  lock.input.value = '';
+  lock.error.textContent = message;
+  lock.error.hidden = !message;
+  setTimeout(() => lock.input.focus(), 50);
+}
+
+function hideLock() {
+  lock.screen.hidden = true;
+}
+
+function tryUnlock() {
+  const key = lock.input.value.trim();
+  if (!key) {
+    lock.error.textContent = 'Escribe tu contraseña.';
+    lock.error.hidden = false;
+    return;
   }
-
-  return (
-    '**Cerebro aún sin conectar.** Recibí tu mensaje y la interfaz funciona.\n\n' +
-    `Personalidad activa: \`${PERSONA_NAMES[options.persona]}\`. ` +
-    'Escribe `/demo` para probar el formato.'
-  );
+  setKey(key);
+  lock.input.value = '';
+  hideLock();
+  toast('Acceso configurado');
 }
 
 /* ============ ENVIAR MENSAJES ============ */
@@ -102,12 +108,34 @@ function setBusy(value) {
   els.send.disabled = value;
   setThinking(value);
   if (value) setStatus('Procesando...', 'busy');
-  else setStatus('En línea');
+}
+
+function handleError(err, bubble) {
+  if (err && err.status === 401) {
+    clearKey();
+    updateBubble(bubble, '🔒 Acceso denegado. Revisa tu contraseña maestra.');
+    setStatus('Bloqueado', 'error');
+    showLock('Contraseña incorrecta.');
+    return;
+  }
+
+  let msg = err && err.message ? err.message : 'Error desconocido';
+  if (err instanceof TypeError) {
+    msg =
+      'No pude conectar con el cerebro de ARES. Revisa tu conexión y que la página esté abierta desde la dirección de tu Worker.';
+  }
+  updateBubble(bubble, '⚠️ ' + msg);
+  setStatus('Error', 'error');
 }
 
 async function send(textOverride) {
   const text = (typeof textOverride === 'string' ? textOverride : els.input.value).trim();
   if (!text || busy) return;
+
+  if (!getKey()) {
+    showLock();
+    return;
+  }
 
   els.input.value = '';
   autoResize();
@@ -119,19 +147,41 @@ async function send(textOverride) {
   setBusy(true);
   const bubble = showTyping();
 
+  // El texto se dibuja como máximo una vez por fotograma para que sea fluido
+  let pending = '';
+  let frame = 0;
+  const render = () => {
+    frame = 0;
+    updateBubble(bubble, pending);
+  };
+
   try {
-    const reply = await getReply(history, { persona: settings.persona });
+    const result = await streamChat({
+      messages: history.slice(-MAX_SENT),
+      persona: settings.persona,
+      model: settings.model,
+      onToken: (full) => {
+        pending = full;
+        if (!frame) frame = requestAnimationFrame(render);
+      },
+    });
+
+    if (frame) cancelAnimationFrame(frame);
+
+    const reply = result.text.trim() || '(El modelo no devolvió respuesta)';
     updateBubble(bubble, reply);
     history.push({ role: 'assistant', content: reply });
     saveHistory();
     setStatus('En línea');
+
+    if (settings.model === 'auto' && result.model === 'rapido') {
+      toast('Usando el modelo rápido');
+    }
   } catch (err) {
-    updateBubble(bubble, '⚠️ ' + (err && err.message ? err.message : 'Error desconocido'));
-    setStatus('Error', 'error');
+    if (frame) cancelAnimationFrame(frame);
+    handleError(err, bubble);
   } finally {
-    busy = false;
-    els.send.disabled = false;
-    setThinking(false);
+    setBusy(false);
   }
 }
 
@@ -213,6 +263,13 @@ function init() {
 
   // Micrófono (se activa en la fase de voz)
   els.mic.addEventListener('click', () => toast('La voz llega en la Fase 4'));
+
+  // Pantalla de bloqueo
+  lock.btn.addEventListener('click', tryUnlock);
+  lock.input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') tryUnlock();
+  });
+  if (!getKey()) showLock();
 }
 
 init();
