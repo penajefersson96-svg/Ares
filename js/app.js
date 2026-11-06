@@ -19,16 +19,9 @@ const MAX_HISTORY = 100;
 const MAX_SENT = 20; // mensajes que se envían al cerebro en cada petición
 
 const DEFAULT_SETTINGS = {
-  persona: 'general',
   model: 'auto',
   voice: false,
   web: false,
-};
-
-const PERSONA_NAMES = {
-  general: 'General',
-  ciberseguridad: 'Ciberseguridad',
-  programador: 'Programador',
 };
 
 function loadJSON(key, fallback) {
@@ -158,7 +151,6 @@ async function send(textOverride) {
   try {
     const result = await streamChat({
       messages: history.slice(-MAX_SENT),
-      persona: settings.persona,
       model: settings.model,
       onToken: (full) => {
         pending = full;
@@ -211,21 +203,14 @@ function init() {
   }
 
   // Restaurar ajustes en los controles
-  const personaSelect = document.getElementById('persona-select');
   const voiceToggle = document.getElementById('toggle-voice');
   const webToggle = document.getElementById('toggle-web');
   const modelSelect = document.getElementById('model-select');
 
-  personaSelect.value = settings.persona;
   voiceToggle.checked = settings.voice;
   webToggle.checked = settings.web;
   modelSelect.value = settings.model;
 
-  personaSelect.addEventListener('change', () => {
-    settings.persona = personaSelect.value;
-    saveSettings();
-    toast('Personalidad: ' + PERSONA_NAMES[settings.persona]);
-  });
   voiceToggle.addEventListener('change', () => {
     settings.voice = voiceToggle.checked;
     saveSettings();
@@ -262,7 +247,7 @@ function init() {
   document.getElementById('btn-clear').addEventListener('click', () => clearConversation(true));
 
   // Micrófono (se activa en la fase de voz)
-  els.mic.addEventListener('click', () => toast('La voz llega en la Fase 4'));
+  els.mic.addEventListener('click', () => toast('La voz llega en la siguiente parte'));
 
   // Pantalla de bloqueo
   lock.btn.addEventListener('click', tryUnlock);
