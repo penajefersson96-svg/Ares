@@ -164,10 +164,11 @@ async function send(textOverride) {
     updateBubble(bubble, reply);
     history.push({ role: 'assistant', content: reply });
     saveHistory();
-    setStatus('En línea');
-
+        const labels = { potente: 'Potente', rapido: 'Rápido', memoria: 'Memoria' };
+    setStatus('En línea · ' + (labels[result.model] || 'ARES'));
+    
     if (settings.model === 'auto' && result.model === 'rapido') {
-      toast('Usando el modelo rápido');
+      toast('El modelo potente no respondió: usando el rápido');
     }
   } catch (err) {
     if (frame) cancelAnimationFrame(frame);
